@@ -1,5 +1,15 @@
 # Why Kazu?
+#   http://kazu.korea.ac.kr/docs#/
+#   https://astrazeneca.github.io/KAZU/introduction.html#
 # Kazu is a lightweight biomedical NER and Linking (also known as ‘grounding’ or ‘normalisation’) pipelining framework used at AstraZeneca.
+# Kazu is NOT Kazu's main functionality does not include developing or training new machine learning models;
+#   it is more of a framework for integrating and using existing models for natural language processing tasks,
+#   especially in the field of biomedical literature. The TinyBERN2 training code mentioned may be used for demonstration
+#   or to provide support for further fine-tuning of existing models, rather than the core functionality of the Kazu framework.
+#   In short, Kazu is primarily for applying and deploying models, rather than training them from scratch.
+# AZ already using Kazu in live drug discovery/development projects, such as the BIKG knowledge graph.
+#   https://www.biorxiv.org/content/10.1101/2021.10.28.466262v1.full
+# Kazu: Open source under a permissive Apache 2.0 license - including allowing commercial use.
 
 # For NER:
 # 1. Non-contiguous entities (see Extending TextAE for annotation of non-contiguous entities).
@@ -14,10 +24,12 @@
 #   A system that could fully (or at least partially) automate the preprocessing/cleaning of knowledgebases and ontologies,
 #    in preparation for them to become a linking target.
 
-# Speed:
+# For Speed:
 # For millions of documents, able to process documents efficiently and scale easily (i.e. without requiring expensive GPU acceleration).
 
+
 # Hydra:
+# https://hydra.cc/docs/intro/
 # Introduction:
 # An open-source Python framework that simplifies the development of research and other complex applications.
 # key feature is the ability to dynamically create a hierarchical configuration by composition and
@@ -36,6 +48,13 @@
 #   Run three model training tasks simultaneously, each using a different batch size.
 #   We can do this with a single command, such as python train.py -m batch_size=32,64,128
 
+
+
+# Quickstart
+
+# Processing your first document
+# pip install torch
+# pip install kazu
 import hydra
 from hydra.utils import instantiate
 
@@ -46,26 +65,85 @@ from pathlib import Path
 import os
 
 # the hydra config is kept in the model pack
-cdir = Path(os.environ["KAZU_MODEL_PACK"]).joinpath("conf")
+cdir = Path(os.environ["KAZU_MODEL_PACK"]).joinpath("conf") # conf directory
 
-
+# Hydra's decorator, which specifies the version base,
+#   configuration path, and configuration file name of the Hydra configuration.
+#   This decorator automatically handles the application's configuration.
 @hydra.main(
     version_base=HYDRA_VERSION_BASE, config_path=str(cdir), config_name="config"
 )
 def kazu_test(cfg):
-    pipeline: Pipeline = instantiate(cfg.Pipeline)
+    pipeline: Pipeline = instantiate(cfg.Pipeline)  # Instantiate a configured Pipeline object through Hydra's instantiate method.
     text = "EGFR mutations are often implicated in lung cancer"
     doc = Document.create_simple_document(text)
-    pipeline([doc])
+    pipeline([doc]) # pipeline: Pipeline = instantiate(cfg.Pipeline)
     print(f"{doc.get_entities()}")
-
 
 if __name__ == "__main__":
     kazu_test()
+# This is a function named kazu_test is defined, which sets up a processing pipeline to process text that may contain
+#   information related to EGFR gene mutations and lung cancer.
+#   It then passes the text to the pipe, which processes it and outputs the result.
+#   This is a simple example of using Hydra for configuration management and the Kazu framework for text analysis.
 
 
-# Quickstart
+# At a glance: How to use the default Kazu pipeline
+#   https://astrazeneca.github.io/KAZU/default_pipeline.html
+#　Tag the following entity classes with a curated dictionary using the spaCy PhraseMatcher.
+#   This uses MemoryEfficientStringMatchingStep
+#  This step is limited to string matching only.
+#   A full FlashText implementation (i.e. based on tokens) is available via ExplosionStringMatchingStep,
+#   however this uses considerably more memory.
 
+# EXAMPLE:
+# install libraries and dependencies
+# !pip install spacy
+# !pip install kazu[all-steps]
+#
+# import libraries and dependencies
+# import spacy
+# from kazu.pipeline import Pipeline
+# from kazu.data.data import Document
+# from kazu.steps.entity_recognition import MemoryEfficientStringMatchingStep, TransformersModelForTokenClassificationNerStep
+# from kazu.steps.entity_linking import DictionaryEntityLinkingStep
+# from kazu.steps.disambiguation import RulesBasedEntityClassDisambiguationFilterStep
+# from kazu.steps.mapping import MappingStep
+# from kazu.steps.merging import MergeOverlappingEntsStep
+# from kazu.steps.abbreviation import AbbreviationFinderStep
+# from kazu.steps.cleanup import CleanupStep
+#
+# # initialised spacy
+# nlp = spacy.load('en_core_sci_md')
+#
+# # create pipeline instance
+# pipeline = Pipeline()
+#
+# Add individual processing steps to the pipeline
+# pipeline.add_step(MemoryEfficientStringMatchingStep())
+# pipeline.add_step(TransformersModelForTokenClassificationNerStep())
+# pipeline.add_step(DictionaryEntityLinkingStep())
+# pipeline.add_step(RulesBasedEntityClassDisambiguationFilterStep())
+# pipeline.add_step(MappingStep())
+# pipeline.add_step(MergeOverlappingEntsStep())
+# pipeline.add_step(AbbreviationFinderStep())
+# pipeline.add_step(CleanupStep())
+#
+# Create a list of documents to process
+# texts = ["EGFR mutations are often implicated in lung cancer", "Other example text"]
+# documents = [Document.create_simple_document(text) for text in texts]
+#
+# Documents processing
+# pipeline(documents)
+#
+# # print processed documents
+# for doc in documents:
+#     print(doc.to_json())
+
+
+
+# Kazu Data Model
+# Import the Document and Entity classes, and the abbreviation search step AbbreviationFinderStep.
 from kazu.data.data import Document, Entity
 from kazu.steps.document_post_processing.abbreviation_finder import (
     AbbreviationFinderStep,
@@ -78,11 +156,11 @@ doc = Document.create_simple_document(
 # create an Entity for the span "Epidermal Growth Factor Receptor"
 entity = Entity.load_contiguous_entity(
     # start and end are the character indices for the entity
-    start=0,
-    end=len("Epidermal Growth Factor Receptor"),
-    namespace="example",
-    entity_class="gene",
-    match="Epidermal Growth Factor Receptor",
+    start=0,                                        # Character index of the start of the entity
+    end=len("Epidermal Growth Factor Receptor"),    # Character index of the end of the entity
+    namespace="example",                            # The namespace to which the entity belongs
+    entity_class="gene",                            # Entity category, here is gene
+    match="Epidermal Growth Factor Receptor",       # Text content of entity matching
 )
 
 # add it to the documents first (and only) section
@@ -94,78 +172,61 @@ step = AbbreviationFinderStep()
 # all the docs, and just the failures
 processed, failed = step([doc])
 # check that a new entity has been created, attached to the EGFR span
+    # lambda x: x.match == "EGFR": lambda defines an anonymous function that receives
+    #  a parameter x (here represents an entity) and checks whether the match attribute of the entity is equal to the string "EGFR".
+    # filter(function, iterable): The filter function receives a function and an iterable object
+    #  (here is the entity list returned by doc.get_entities()), and filters out elements that meet the conditions
+    #   based on the provided function.
+    # doc.get_entities(): This hypothetical method returns a list containing all entities in the document.
+    # next(iterable, default): The next function returns the next element of the iterator (here is the iterator
+    #  returned by the filter function). If the iterator is exhausted, it will return a default value if that value
+    #  is provided, otherwise it will throw a StopIteration exception. Here, no default value is provided.
 egfr_entity = next(filter(lambda x: x.match == "EGFR", doc.get_entities()))
-assert egfr_entity.entity_class == "gene"
-print(egfr_entity.match)
-
-# Kazu Data Mode
-# from kazu.data.data import Document, Entity
-from kazu.steps.document_post_processing.abbreviation_finder import (
-    AbbreviationFinderStep,
-)
-
-# creates a document with a single section
-doc = Document.create_simple_document(
-    "Epidermal Growth Factor Receptor (EGFR) is a gene."
-)
-# create an Entity for the span "Epidermal Growth Factor Receptor"
-entity = Entity.load_contiguous_entity(
-    # start and end are the character indices for the entity
-    start=0,
-    end=len("Epidermal Growth Factor Receptor"),
-    namespace="example",
-    entity_class="gene",
-    match="Epidermal Growth Factor Receptor",
-)
-
-# add it to the documents first (and only) section
-doc.sections[0].entities.append(entity)
-
-# create an instance of the AbbreviationFinderStep
-step = AbbreviationFinderStep()
-# a step may fail to process a document, so it returns two lists:
-# all the docs, and just the failures
-processed, failed = step([doc])
-# check that a new entity has been created, attached to the EGFR span
-egfr_entity = next(filter(lambda x: x.match == "EGFR", doc.get_entities()))
+# egfr_entity is the entity object matching "EGFR" found previously through the filtering operation.
+# egfr_entity.entity_class accesses the entity_class attribute of this entity object,
+#  which stores the entity's classification (in this context it might be genes, diseases, etc.).
+# == "gene" is a conditional expression that checks whether the value of the entity_class attribute is equal to the string "gene".
+# If the value of egfr_entity.entity_class is indeed "gene", then the assert statement will do nothing
+#  and program execution will continue. If the value is not "gene", the assert statement throws an AssertionError,
+#  possibly interrupting the program or triggering exception handling (if any).
 assert egfr_entity.entity_class == "gene"
 print(egfr_entity.match)
 
 
 # THESE ARE EXAMPLE FOR Data Serialization and deserialization
+Serialization: DocumentJsonUtils.doc_to_json_dict()
 
-# Serialization: DocumentJsonUtils.doc_to_json_dict()
+from kazu.utils import DocumentJsonUtils
+from kazu.data.data import Document
+assume a Document instance
+doc = Document(text="Example text", entities=[], sections=[])
+Serialize the Document object
+json_dict = DocumentJsonUtils.doc_to_json_dict(doc)
+print(json_dict)
 
-# from kazu.utils import DocumentJsonUtils
-# from kazu.data.data import Document
-# assume a Document instance
-# doc = Document(text="Example text", entities=[], sections=[])
-# Serialize the Document object
-# json_dict = DocumentJsonUtils.doc_to_json_dict(doc)
-# print(json_dict)
+Deserialization: Document.from_json()
+json_data = {
+    "text": "Example text",
+    "entities": [],
+    "sections": []
+}
 
-# Deserialization: Document.from_json()
-# json_data = {
-#     "text": "Example text",
-#     "entities": [],
-#     "sections": []
-# }
-#
-# # Deserialize JSON data into a Document object
-# doc = Document.from_json(json_data)
-#
-# print(doc.text)  # Output: Example text
+# Deserialize JSON data into a Document object
+doc = Document.from_json(json_data)
 
-# Creating an Object from a Dictionary: from_dict()
-# import copy
-# from kazu.data.data import Document
-#
-# # Example dictionary corresponding to a Document object
-# dict_data = {
-#     "text": "Example text",
-#     "entities": [],
-#     "sections": []
-# }
+print(doc.text)  # Output: Example text
+
+Creating an Object from a Dictionary: from_dict()
+import copy
+from kazu.data.data import Document
+
+# Example dictionary corresponding to a Document object
+dict_data = {
+    "text": "Example text",
+    "entities": [],
+    "sections": []
+}
+
 
 
 # Visualising results in Label Studio
@@ -184,7 +245,6 @@ def run_docs(cfg: DictConfig) -> None:
     pipeline: Pipeline = instantiate(cfg.Pipeline)
     docs = [Document.create_simple_document(x) for x in ["doc 1 text", "doc 2 text etc"]]
     pipeline(docs)
-
 
 if __name__ == "__main__":
     run_docs()
@@ -265,7 +325,6 @@ from kazu.ontology_preprocessing.base import (
     SYN,
     MAPPING_TYPE,
 )
-
 
 def parse_to_dataframe(self) -> pd.DataFrame:
     """The objective of this method is to create a long, thin pandas dataframe of terms and
@@ -368,3 +427,8 @@ parser = ChemblOntologyParser(      # ChemblOntologyParser is a subclass inherit
 #  If you suspect you are having dependency clash issues,
 #  you can view the dependencies a given Kazu model pack was tested with via the tested_dependencies.txt file
 #  (located at the top level of a model pack). Try installing the version of the problematic dependency listed here.
+
+
+
+# API Documentation:
+#   https://astrazeneca.github.io/KAZU/_autosummary/kazu.html
