@@ -1,3 +1,13 @@
+# Why Kazu?
+# Kazu is a lightweight biomedical NER and Linking (also known as ‘grounding’ or ‘normalisation’) pipelining framework used at AstraZeneca.
+
+# For NER:
+# 1. Non-contiguous entities (see Extending TextAE for annotation of non-contiguous entities).
+#       https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7362949/
+# 2. Nested entities (see Recognizing Nested Named Entities in GENIA corpus).
+#       https://aclanthology.org/W06-3318.pdf
+
+
 import hydra
 from hydra.utils import instantiate
 
