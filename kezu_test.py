@@ -7,6 +7,34 @@
 # 2. Nested entities (see Recognizing Nested Named Entities in GENIA corpus).
 #       https://aclanthology.org/W06-3318.pdf
 
+# For Entity linking:
+# 1. Link directly to the source ontology URIs enables Kazu to always be up to date with a given ontology,
+#    whilst avoiding issues associated with the development of a composite ontology.
+# 2. Dealing with the inconsistencies with the source knowledgebase.
+#   A system that could fully (or at least partially) automate the preprocessing/cleaning of knowledgebases and ontologies,
+#    in preparation for them to become a linking target.
+
+# Speed:
+# For millions of documents, able to process documents efficiently and scale easily (i.e. without requiring expensive GPU acceleration).
+
+# Hydra:
+# Introduction:
+# An open-source Python framework that simplifies the development of research and other complex applications.
+# key feature is the ability to dynamically create a hierarchical configuration by composition and
+# override it through config files and the command line.
+# Key Features:
+# 1. Hierarchical configuration composable from multiple sources:
+#   A base configuration file that defines default settings,
+#   and then add additional configuration files for specific experiments or environments.
+# 2. Configuration can be specified or overridden from the command line:
+#   If the learning rate is set to 0.01 in the configuration file,
+#   you can use python train.py learning_rate=0.02 on the command line to override this value.
+# 3. Dynamic command line tab completion by press "TAB".
+# 4. Run your application locally or launch it to run remotely:
+#   Run a model training task on our local machine, or we can configure Hydra to deploy the task to cloud platform(AWS, GCP etc.).
+# 5. Run multiple jobs with different arguments with a single command:
+#   Run three model training tasks simultaneously, each using a different batch size.
+#   We can do this with a single command, such as python train.py -m batch_size=32,64,128
 
 import hydra
 from hydra.utils import instantiate
