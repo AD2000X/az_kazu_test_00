@@ -115,7 +115,8 @@ class ModelArguments:
         },
     )
 
-
+# Each of these fields is part of the DataTrainingArguments class and is used to fine-tune the behavior of the data
+#  loading and processing within the training script.
 @dataclass
 class DataTrainingArguments:
     """
@@ -246,6 +247,8 @@ class DataTrainingArguments:
     )
     # __post_init__, is called automatically after the DataTrainingArguments class is initialized.
     #  It is used to validate the arguments passed to the class.
+    # This method ensures the necessary data inputs are present and correctly formatted before proceeding with any
+    #  further actions.
     def __post_init__(self):
         # check if neither dataset_name nor file paths for training and validation data (train_file and validation_file)
         #  are provided.
@@ -278,6 +281,8 @@ def main():
     # Initializes an HfArgumentParser object from the transformers library, which is designed to handle command-line
     #  arguments. The parser is configured to expect arguments defined in the ModelArguments, DataTrainingArguments,
     #  and TrainingArguments data classes.
+    # This setup allows for a flexible way to input configurations to the script, either through command-line arguments
+    #  or a JSON file, and prepares logging for tracking the execution process.
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     # if statement checks if exactly one command-line argument is provided (in addition to the script name) and if this
     #  argument (a path) ends with ".json". This is used to determine if the user intends to pass arguments via a JSON file.
@@ -330,6 +335,8 @@ def main():
     # Checks if the output directory exists, if training is enabled (do_train=True), and if the output directory is
     #  not set to be overwritten. This is to detect if there's a last checkpoint to resume training from.
     # If conditions are met, attempts to get the last checkpoint from the output directory.
+    # This code snippet handles the initial setup for logging, configures logging levels for different components,
+    #  logs essential training setup information, and manages checkpoint detection and resumption logic.
     last_checkpoint = None
     # Checks if no last checkpoint is found but the output directory is not empty.
     if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
@@ -432,27 +439,67 @@ def main():
     # Distributed training:
     # The .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
+    # This line initializes a configuration object for the model using AutoConfig.from_pretrained method from the
+    #  transformers library. This method automatically determines the appropriate model configuration based on the name
+    #  or path provided.
+    # This configuration setup is crucial for fine-tuning a pre-trained model with specific parameters and
+    #  dataset-related mappings, ensuring that the model is appropriately adjusted to the task and dataset at hand.
     config = AutoConfig.from_pretrained(
+        # This argument specifies the configuration name or path. If model_args.config_name is provided, it uses that;
+        #  otherwise, it falls back to model_args.model_name_or_path. This allows for flexibility in specifying either
+        #  a specific configuration or a model identifier.
         model_args.config_name if model_args.config_name else model_args.model_name_or_path,
+        # Specifies the number of labels for the model, which is essential for classification tasks.
         num_labels=num_labels,
+        # Provides a mapping from label names to label IDs. This is necessary for the model to understand which integer
+        #  ID corresponds to which textual label in the dataset.
         label2id=label_to_id,
+        # Inverts the label2id mapping to create an id2label mapping, which is a dictionary that maps label IDs back to
+        #  label names. This inversion is useful for interpreting the model's predictions.
         id2label={i: l for l, i in label_to_id.items()},
+        # Sets the task name for which the model is being fine-tuned. This could be useful for configuring model
+        #  behaviors specific to certain tasks like 'ner' for named entity recognition.
         finetuning_task=data_args.task_name,
+        # Specifies the directory where the pre-trained models will be cached. This is helpful for reusing downloaded
+        #  models without needing to download them again.
         cache_dir=model_args.cache_dir,
+        # Indicates the specific version of the model to use, which can be a branch name, tag name, or commit ID.
+        #  This is useful for ensuring reproducibility by using the exact same model version.
         revision=model_args.model_revision,
+        # Determines whether to use an authentication token when accessing private models or the Hugging Face Model Hub.
+        #  If model_args.use_auth_token is True, it enables the use of a token.
         use_auth_token=True if model_args.use_auth_token else None,
     )
 
+    # This line determines the tokenizer name or path. If model_args.tokenizer_name is provided, it uses that; otherwise,
+    #  it uses model_args.model_name_or_path. This flexibility allows specifying either a specific tokenizer or using
+    #  the same identifier as the model.
+    # This setup ensures the correct initialization of the tokenizer, considering the specific needs of different models
+    #  and providing flexibility to use different tokenizer versions or caching strategies.
     tokenizer_name_or_path = model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path
+    # This checks if the model_type defined in the config is either "gpt2" or "roberta". These model types have specific
+    #  tokenization needs, such as the requirement for an extra space prefix for correct tokenization.
     if config.model_type in {"gpt2", "roberta"}:
+        # Initializes the tokenizer using the AutoTokenizer.from_pretrained method. This function automatically
+        #  selects the appropriate tokenizer for the specified model.
         tokenizer = AutoTokenizer.from_pretrained(
+            # Specifies the name or path of the tokenizer to be used.
             tokenizer_name_or_path,
+            # Sets the directory where the tokenizer will be cached.
             cache_dir=model_args.cache_dir,
+            # Opt-in to use the fast tokenizer implementation if available. Fast tokenizers are written in Rust,
+            #  offering better performance and additional features.
             use_fast=True,
+            # Specifies the specific version of the tokenizer to use, similar to how it's done for the model.
             revision=model_args.model_revision,
+            # Determines whether to use an authentication token for private models or models hosted on Hugging Face's Model Hub.
             use_auth_token=True if model_args.use_auth_token else None,
+            # Specifically for GPT-2 and Roberta models, this ensures that a space is added before the input text,
+            #  which is necessary for correct tokenization with these models.
             add_prefix_space=True,
         )
+    # This else clause is executed if the model is not "gpt2" or "roberta", using the same method to initialize the
+    #  tokenizer but with different parameters.
     else:
         tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_name_or_path,
@@ -460,8 +507,13 @@ def main():
             use_fast=True,
             revision=model_args.model_revision,
             use_auth_token=True if model_args.use_auth_token else None,
+            # Enables truncation to automatically truncate sequences to the maximum length the model can handle.
             truncation=True,
+            # Sets the maximum length for the tokenizer. The comment indicates there might be an issue with this line
+            #  not functioning as expected.
             max_length=data_args.max_length,  # TODO: For some reasons, this line dose not work
+            # If set to True, this forces the tokenizer to only use local files and not attempt to download any files
+            #  from the internet, which can be useful for ensuring reproducibility or working offline.
             local_files_only=data_args.local_files_only,  # to avoid tokenizing again
         )
 
@@ -621,12 +673,21 @@ def main():
     # metric = load_metric("seqeval", cache_dir=training_args.output_dir)
     metric = load_metric("evaluate_multi_label.py", cache_dir=training_args.output_dir)
 
+    # The compute_metrics function is defined to calculate and return the model's performance metrics given its
+    #  predictions. This function takes p as input, which contains the model's prediction probabilities and the true labels.
     def compute_metrics(p):
         # predictions_prob, labels, label_probs = p
+        # Predictions_prob and labels are extracted from p. predictions_prob contains the model's
+        #  predicted probabilities for each label, while labels are the true labels.
         predictions_prob, labels = p
+        # predictions = np.argmax(predictions_prob, axis=2): This converts the prediction probabilities to actual
+        #  predicted labels by selecting the label with the highest probability for each token.
         predictions = np.argmax(predictions_prob, axis=2)
 
         # Remove ignored index (special tokens)
+        # Next, the code iterates over predictions and labels to construct lists of true_predictions and true_labels,
+        #  filtering out special tokens (indicated by -100). This step aligns the model's predictions with the true
+        #  labels, excluding tokens that should not be evaluated (like padding or segment separators in BERT-like models).
         true_predictions = [
             [label_list[p] for (p, l) in zip(prediction, label) if l != -100]
             for prediction, label in zip(predictions, labels)
@@ -636,18 +697,29 @@ def main():
             for prediction, label in zip(predictions, labels)
         ]
         # results = metric.compute(predictions=true_predictions, references=true_labels, label_list=label_list) # for label level
-
+        # The true_predictions_prob list is then created by filtering the prediction probabilities in the same way,
+        #  ensuring only relevant tokens are considered.
         true_predictions_prob = [
             [p for (p, l) in zip(prediction, label) if l != -100]
             for prediction, label in zip(predictions_prob, labels)
         ]
+        # true_label_probs, which generates one-hot encoded vectors (using np.eye) for the true labels. This step
+        #  prepares the true labels in a format compatible with the evaluation metric, which expects probabilities.
         # pseudo-true-label generated using true labels (TODO: use label_probs)
         true_label_probs = [
             np.eye(len(label_list))[[label_to_index[l] for l in label]]
             for label in true_labels
         ]
+        # results = metric.compute(predictions=true_predictions_prob, references=true_label_probs, label_list=label_list).
+        #  This calls the custom evaluation metric to compute metrics such as precision, recall, F1 score, and accuracy
+        #   based on the model's predictions and the true labels.
+        #   It's designed to handle the complexities of multi-label classification.
         results = metric.compute(predictions=true_predictions_prob, references=true_label_probs, label_list=label_list)
-
+        # If data_args.return_entity_level_metrics is True, the code unpacks nested dictionaries within results to
+        #  provide detailed metrics for each label. Otherwise, it returns a summary of overall performance metrics.
+        # The function returns either detailed entity-level results or a summary of overall metrics based on the user's
+        #  preference. This enables a flexible evaluation that can be tailored to different use cases and requirements
+        #  in multi-label classification tasks.
         if data_args.return_entity_level_metrics:
             # Unpack nested dictionaries
             final_results = {}
@@ -743,12 +815,27 @@ def main():
                 kwargs["dataset"] = data_args.dataset_name
 
         trainer.push_to_hub(**kwargs)
-
-
+# n the context of this code snippet, the presence of _mp_fn suggests the script is designed to support distributed
+#  training on TPUs via PyTorch XLA's xla_spawn.py. The main() function contains the core logic of the script, and its
+#  execution is conditional upon the script being run as the main program, ensuring modularity and reusability of the code.
+# def _mp_fn(index):: This defines a function _mp_fn which takes a single argument index. This function is a common
+#  pattern used when writing scripts that are compatible with distributed training, especially with frameworks that
+#  support TPUs, like PyTorch XLA (PyTorch's TPU acceleration library). The index argument usually represents the
+#  index of the process in the distributed setting.
 def _mp_fn(index):
+    # For xla_spawn (TPUs): This comment indicates that the _mp_fn function is specifically intended for scenarios
+    #  where the script is being run on TPUs using the xla_spawn.py script provided by PyTorch XLA. The xla_spawn.py
+    #  script helps spawn multiple processes for training on each TPU core.
     # For xla_spawn (TPUs)
+    # main(): Inside the _mp_fn function, the main() function is called. This pattern suggests that the primary logic of
+    #  the program, including model training, evaluation, etc., is encapsulated within the main() function.
+    #  By calling main() within _mp_fn, it ensures that each spawned process executes the training script.
     main()
 
-
+# if __name__ == "__main__":: This is a common Python idiom used to determine whether the script is being run as the
+#  main program. This check is true if the script is executed directly from the command line or as a script,
+#  but false if the module is imported into another module.
 if __name__ == "__main__":
+    # main(): When the script is executed directly, the main() function is called. This line effectively kickstarts the
+    #  program, triggering whatever processes are defined within main().
     main()
