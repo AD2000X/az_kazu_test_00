@@ -49,7 +49,6 @@
 #   We can do this with a single command, such as python train.py -m batch_size=32,64,128
 
 
-
 # Quickstart
 
 # Processing your first document
