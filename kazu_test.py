@@ -227,7 +227,6 @@ dict_data = {
 }
 
 
-
 # Visualising results in Label Studio
 # https://astrazeneca.github.io/KAZU/label_studio_integration.html
 
